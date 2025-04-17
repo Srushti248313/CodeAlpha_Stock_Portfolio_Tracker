@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Portfolio Tracker</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      margin-top: 40px;
+    }
+    .title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+    .card {
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    #stockChart {
+      height: 400px !important;
+    }
+    .form-inline input {
+      margin-right: 10px;
+    }
+    .list-group-item {
+      transition: all 0.3s ease;
+    }
+    .list-group-item:hover {
+      background-color: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col text-center">
+        <h1 class="title">📈 Stock Portfolio Tracker</h1>
+        <p class="text-muted">Track your favorite stocks in real-time with charts and updates.</p>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h5>Add Stock Symbol</h5>
+          <div class="form-inline d-flex">
+            <input type="text" id="stockSymbol" class="form-control me-2" placeholder="Enter Symbol (e.g., AAPL)">
+            <button class="btn btn-primary" onclick="addStock()">Add Stock</button>
+          </div>
+          <ul id="stockList" class="list-group mt-4"></ul>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-4">
+          <h5>Live Stock Price Graph</h5>
+          <canvas id="stockChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('stockChart').getContext('2d');
+    const stockChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Stock Price ($)',
+          data: [],
+          backgroundColor: 'rgba(78, 115, 223, 0.1)',
+          borderColor: 'rgba(78, 115, 223, 1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+
+    function addStock() {
+      const symbol = document.getElementById('stockSymbol').value.toUpperCase();
+      if (!symbol) return alert('Please enter a stock symbol.');
+
+      fetch(`/get_stock_price?symbol=${symbol}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.price) {
+            const time = new Date().toLocaleTimeString();
+            stockChart.data.labels.push(time);
+            stockChart.data.datasets[0].data.push(data.price);
+            stockChart.update();
+
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `<strong>${data.symbol}</strong><span>$${data.price}</span>`;
+            document.getElementById('stockList').appendChild(li);
+
+            // Auto update every 10 seconds
+            setInterval(() => {
+              fetch(`/get_stock_price?symbol=${symbol}`)
+                .then(res => res.json())
+                .then(data => {
+                  const time = new Date().toLocaleTimeString();
+                  stockChart.data.labels.push(time);
+                  stockChart.data.datasets[0].data.push(data.price);
+                  stockChart.update();
+                });
+            }, 10000);
+          } else {
+            alert('Failed to fetch stock price.');
+          }
+        });
+    }
+  </script>
+</body>
+</html>
